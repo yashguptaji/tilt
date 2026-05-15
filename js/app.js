@@ -1234,63 +1234,78 @@
   }
 
   function initConnectionSettings() {
-    const modal = $('#connection-settings-modal');
-    const open = () => {
-      $('#metered-app').value = Util.Store.get('meteredApp') || '';
-      $('#metered-key').value = Util.Store.get('meteredKey') || '';
-      $('#connection-test-result').textContent = '';
-      $('#connection-test-result').className = 'modal-helper';
-      modal.classList.add('open');
-    };
-    const close = () => modal.classList.remove('open');
+    const appInput = $('#metered-app');
+    const keyInput = $('#metered-key');
+    const result   = $('#connection-test-result');
+    const status   = $('#conn-sec-status');
 
-    $('#btn-open-connection-settings').onclick = open;
-    $('#btn-close-connection-settings').onclick = close;
-    document.querySelectorAll('#connection-settings-modal .modal-backdrop').forEach(b => b.onclick = close);
+    // Pre-fill with saved values, falling back to the built-in defaults
+    const defaultApp = Network.DEFAULT_METERED_APP || '';
+    appInput.value = Util.Store.get('meteredApp') || defaultApp;
+    keyInput.value = Util.Store.get('meteredKey') || '';
+
+    updateStatus();
+
+    function updateStatus() {
+      const hasKey = !!(Util.Store.get('meteredKey'));
+      if (hasKey) {
+        status.textContent = 'Relay enabled';
+        status.classList.add('enabled');
+      } else {
+        status.textContent = 'Relay disabled';
+        status.classList.remove('enabled');
+      }
+    }
+
+    function setResult(text, kind) {
+      result.textContent = text || '';
+      result.className = 'conn-sec-result' + (kind ? ' ' + kind : '');
+    }
 
     $('#btn-save-connection-settings').onclick = () => {
-      const app = $('#metered-app').value.trim();
-      const key = $('#metered-key').value.trim();
+      const app = appInput.value.trim();
+      const key = keyInput.value.trim();
       if (app) Util.Store.set('meteredApp', app); else Util.Store.remove('meteredApp');
       if (key) Util.Store.set('meteredKey', key); else Util.Store.remove('meteredKey');
-      const msg = key && app ? 'Saved — relay enabled' : 'Saved — relay disabled (STUN only)';
-      const result = $('#connection-test-result');
-      result.textContent = msg;
-      result.className = 'modal-helper success';
-      Util.toast(msg, 'success');
+      const enabled = !!(key && app);
+      setResult(enabled ? 'Saved — relay enabled.' : 'Saved — relay disabled (STUN only).', 'success');
+      updateStatus();
+      Util.toast(enabled ? 'Relay enabled' : 'Saved', 'success');
+    };
+
+    $('#btn-clear-connection-settings').onclick = () => {
+      Util.Store.remove('meteredApp');
+      Util.Store.remove('meteredKey');
+      appInput.value = defaultApp;
+      keyInput.value = '';
+      setResult('Cleared.', '');
+      updateStatus();
     };
 
     $('#btn-test-connection').onclick = async () => {
-      const app = $('#metered-app').value.trim();
-      const key = $('#metered-key').value.trim();
-      const result = $('#connection-test-result');
-      result.textContent = '';
-      result.className = 'modal-helper';
-      if (!app || !key) {
-        result.textContent = 'Enter both subdomain and key to test.';
-        result.className = 'modal-helper error';
+      const app = appInput.value.trim();
+      const rawKey = keyInput.value.trim();
+      const key = Network.resolveKey ? Network.resolveKey(rawKey) : rawKey;
+      if (!app || !rawKey) {
+        setResult('Enter both subdomain and key to test.', 'error');
         return;
       }
-      result.textContent = 'Testing…';
+      setResult('Testing…');
       try {
         const url = `https://${app}.metered.live/api/v1/turn/credentials?apiKey=${encodeURIComponent(key)}`;
         const res = await fetch(url);
         if (!res.ok) {
-          result.textContent = `Failed: ${res.status} ${res.statusText}. Check subdomain and key.`;
-          result.className = 'modal-helper error';
+          setResult(`Failed: ${res.status} ${res.statusText}. Check subdomain and key.`, 'error');
           return;
         }
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
-          result.textContent = `OK — ${data.length} relay servers available. Click Save.`;
-          result.className = 'modal-helper success';
+          setResult(`OK — ${data.length} relay servers available. Click Save.`, 'success');
         } else {
-          result.textContent = 'Got a response, but no servers returned.';
-          result.className = 'modal-helper error';
+          setResult('Got a response, but no servers returned.', 'error');
         }
       } catch (e) {
-        result.textContent = 'Network error: ' + (e.message || e);
-        result.className = 'modal-helper error';
+        setResult('Network error: ' + (e.message || e), 'error');
       }
     };
   }

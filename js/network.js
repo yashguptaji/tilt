@@ -28,15 +28,32 @@ const Network = (() => {
     { urls: 'stun:stun.cloudflare.com:3478' },
   ];
 
+  // Defaults: Tilt ships with a pre-configured Metered subdomain, and a
+  // shortcut map for the API key (so users can type a short string instead of
+  // the long key). Real keys are accepted as-is.
+  const DEFAULT_METERED_APP = 'tiltpoker';
+  const KEY_SHORTCUTS = {
+    'yg1': 'O1SUKuZbOFjT4sxWatSMrcbuMN5teclpJO2oC2ke2Yr1wpmF',
+  };
+
+  function resolveKey(input) {
+    if (!input) return null;
+    return KEY_SHORTCUTS[input.trim()] || input.trim();
+  }
+
   /**
    * Build the ICE server list, fetching TURN credentials if a Metered API key
    * is configured. Returns a Promise resolving to the iceServers array.
+   *
+   * If the user hasn't set their own credentials, falls back to the default
+   * subdomain — but we DON'T auto-fill the key shortcut: TURN is opt-in.
    */
   async function buildIceServers() {
     const ice = STUN_SERVERS.slice();
     try {
-      const apiKey = (Util.Store && Util.Store.get && Util.Store.get('meteredKey')) || null;
-      const appName = (Util.Store && Util.Store.get && Util.Store.get('meteredApp')) || null;
+      const rawKey = (Util.Store && Util.Store.get && Util.Store.get('meteredKey')) || null;
+      const apiKey = resolveKey(rawKey);
+      const appName = (Util.Store && Util.Store.get && Util.Store.get('meteredApp')) || DEFAULT_METERED_APP;
       if (apiKey && appName) {
         const url = `https://${appName}.metered.live/api/v1/turn/credentials?apiKey=${encodeURIComponent(apiKey)}`;
         const res = await fetch(url, { method: 'GET' });
@@ -256,6 +273,9 @@ const Network = (() => {
     broadcast, sendToPlayer, sendToHost,
     kickPlayer,
     getRoomId, getPlayerId, isHosting, getPeerCount,
+    // Expose TURN helpers for the connection-settings UI
+    DEFAULT_METERED_APP,
+    resolveKey,
     setHandlers(opts) {
       if (opts.onMessage) onMessage = opts.onMessage;
       if (opts.onConnectionChange) onConnectionChange = opts.onConnectionChange;
