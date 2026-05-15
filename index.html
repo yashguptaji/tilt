@@ -77,32 +77,13 @@
       </div>
     </div>
 
-    <details id="connection-settings-section" class="connection-settings-section">
-      <summary>
-        <span class="conn-sec-title">Connection settings</span>
-        <span class="conn-sec-status" id="conn-sec-status">Relay disabled</span>
-      </summary>
-      <div class="conn-sec-body">
-        <p class="conn-sec-intro">
-          Tilt connects players directly. Cross-network play sometimes needs a relay
-          (corporate Wi-Fi, mobile data, restrictive ISPs). Enter a key below to enable.
-        </p>
-        <div class="conn-sec-row">
-          <label for="metered-app">Subdomain</label>
-          <input id="metered-app" type="text" placeholder="tiltpoker" autocomplete="off" />
-        </div>
-        <div class="conn-sec-row">
-          <label for="metered-key">Key</label>
-          <input id="metered-key" type="text" placeholder="paste API key, or shortcut" autocomplete="off" />
-        </div>
-        <div class="conn-sec-actions">
-          <button class="btn btn-ghost" id="btn-test-connection">Test</button>
-          <button class="btn btn-primary" id="btn-save-connection-settings">Save</button>
-          <button class="btn btn-ghost" id="btn-clear-connection-settings">Clear</button>
-        </div>
-        <p class="conn-sec-result" id="connection-test-result"></p>
-      </div>
-    </details>
+    <div class="connection-trigger">
+      <button id="btn-open-connection-settings" class="btn btn-ghost connection-trigger-btn">
+        <span class="conn-trigger-icon">⚡</span>
+        <span class="conn-trigger-label">Connection settings</span>
+        <span class="conn-trigger-status" id="conn-trigger-status">Off</span>
+      </button>
+    </div>
 
     <footer class="landing-footer">
       <span>Peer-to-peer · No server · Your data stays in your browser</span>
@@ -366,6 +347,35 @@
         <button class="btn btn-ghost danger" id="btn-rebuy-reject">Reject</button>
         <button class="btn btn-primary" id="btn-rebuy-approve">Approve</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<div id="connection-settings-modal" class="modal connection-modal">
+  <div class="modal-backdrop"></div>
+  <div class="modal-content connection-modal-content">
+    <div class="modal-header">
+      <h2>Connection settings</h2>
+      <button class="icon-btn" id="btn-close-connection-settings" aria-label="Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-intro">
+        Tilt connects players directly. Cross-network play sometimes needs a relay —
+        for corporate Wi-Fi, mobile data, or restrictive ISPs.
+      </p>
+      <label class="modal-label" for="metered-app">Subdomain</label>
+      <input id="metered-app" type="text" placeholder="tiltpoker" autocomplete="off" />
+      <label class="modal-label" for="metered-key">Key</label>
+      <input id="metered-key" type="text" placeholder="paste API key, or shortcut" autocomplete="off" />
+      <p class="modal-helper">
+        Status: <span id="conn-modal-status" class="conn-modal-status">Relay disabled</span>
+      </p>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="btn-clear-connection-settings">Clear</button>
+        <button class="btn btn-ghost" id="btn-test-connection">Test</button>
+        <button class="btn btn-primary" id="btn-save-connection-settings">Save</button>
+      </div>
+      <p class="modal-helper" id="connection-test-result"></p>
     </div>
   </div>
 </div>

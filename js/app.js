@@ -1234,80 +1234,122 @@
   }
 
   function initConnectionSettings() {
-    const appInput = $('#metered-app');
-    const keyInput = $('#metered-key');
-    const result   = $('#connection-test-result');
-    const status   = $('#conn-sec-status');
+    const modal       = $('#connection-settings-modal');
+    const triggerBtn  = $('#btn-open-connection-settings');
+    const closeBtn    = $('#btn-close-connection-settings');
+    const appInput    = $('#metered-app');
+    const keyInput    = $('#metered-key');
+    const saveBtn     = $('#btn-save-connection-settings');
+    const testBtn     = $('#btn-test-connection');
+    const clearBtn    = $('#btn-clear-connection-settings');
+    const result      = $('#connection-test-result');
+    const modalStatus = $('#conn-modal-status');
+    const triggerStatus = $('#conn-trigger-status');
 
-    // Pre-fill with saved values, falling back to the built-in defaults
-    const defaultApp = Network.DEFAULT_METERED_APP || '';
-    appInput.value = Util.Store.get('meteredApp') || defaultApp;
-    keyInput.value = Util.Store.get('meteredKey') || '';
+    if (!modal || !triggerBtn || !appInput || !keyInput) {
+      console.warn('Connection settings: required elements missing');
+      return;
+    }
 
-    updateStatus();
+    const defaultApp = (typeof Network !== 'undefined' && Network.DEFAULT_METERED_APP) || 'tiltpoker';
 
-    function updateStatus() {
+    function updateStatusPills() {
       const hasKey = !!(Util.Store.get('meteredKey'));
-      if (hasKey) {
-        status.textContent = 'Relay enabled';
-        status.classList.add('enabled');
-      } else {
-        status.textContent = 'Relay disabled';
-        status.classList.remove('enabled');
+      const text = hasKey ? 'Relay enabled' : 'Relay disabled';
+      if (modalStatus) {
+        modalStatus.textContent = text;
+        modalStatus.classList.toggle('on', hasKey);
+      }
+      if (triggerStatus) {
+        triggerStatus.textContent = hasKey ? 'On' : 'Off';
+        triggerStatus.classList.toggle('on', hasKey);
       }
     }
 
     function setResult(text, kind) {
+      if (!result) return;
       result.textContent = text || '';
-      result.className = 'conn-sec-result' + (kind ? ' ' + kind : '');
+      result.className = (kind === 'success') ? 'modal-helper success'
+                       : (kind === 'error')   ? 'modal-helper error'
+                       : 'modal-helper';
     }
 
-    $('#btn-save-connection-settings').onclick = () => {
-      const app = appInput.value.trim();
-      const key = keyInput.value.trim();
+    function fillFields() {
+      appInput.value = Util.Store.get('meteredApp') || defaultApp;
+      keyInput.value = Util.Store.get('meteredKey') || '';
+      setResult('');
+    }
+
+    function openModal() {
+      fillFields();
+      updateStatusPills();
+      modal.classList.add('open');
+      setTimeout(() => keyInput.focus(), 60);
+    }
+
+    function closeModal() {
+      modal.classList.remove('open');
+    }
+
+    function handleSave() {
+      const app = (appInput.value || '').trim();
+      const key = (keyInput.value || '').trim();
       if (app) Util.Store.set('meteredApp', app); else Util.Store.remove('meteredApp');
       if (key) Util.Store.set('meteredKey', key); else Util.Store.remove('meteredKey');
       const enabled = !!(key && app);
       setResult(enabled ? 'Saved — relay enabled.' : 'Saved — relay disabled (STUN only).', 'success');
-      updateStatus();
+      updateStatusPills();
       Util.toast(enabled ? 'Relay enabled' : 'Saved', 'success');
-    };
+    }
 
-    $('#btn-clear-connection-settings').onclick = () => {
+    function handleClear() {
       Util.Store.remove('meteredApp');
       Util.Store.remove('meteredKey');
       appInput.value = defaultApp;
       keyInput.value = '';
-      setResult('Cleared.', '');
-      updateStatus();
-    };
+      setResult('Cleared.');
+      updateStatusPills();
+    }
 
-    $('#btn-test-connection').onclick = async () => {
-      const app = appInput.value.trim();
-      const rawKey = keyInput.value.trim();
-      const key = Network.resolveKey ? Network.resolveKey(rawKey) : rawKey;
+    async function handleTest() {
+      const app = (appInput.value || '').trim();
+      const rawKey = (keyInput.value || '').trim();
+      const key = (Network && Network.resolveKey) ? Network.resolveKey(rawKey) : rawKey;
       if (!app || !rawKey) {
         setResult('Enter both subdomain and key to test.', 'error');
         return;
       }
       setResult('Testing…');
       try {
-        const url = `https://${app}.metered.live/api/v1/turn/credentials?apiKey=${encodeURIComponent(key)}`;
+        const url = 'https://' + app + '.metered.live/api/v1/turn/credentials?apiKey=' + encodeURIComponent(key);
         const res = await fetch(url);
         if (!res.ok) {
-          setResult(`Failed: ${res.status} ${res.statusText}. Check subdomain and key.`, 'error');
+          setResult('Failed: ' + res.status + ' ' + res.statusText + '. Check subdomain and key.', 'error');
           return;
         }
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
-          setResult(`OK — ${data.length} relay servers available. Click Save.`, 'success');
+          setResult('OK — ' + data.length + ' relay servers available. Click Save.', 'success');
         } else {
           setResult('Got a response, but no servers returned.', 'error');
         }
       } catch (e) {
-        setResult('Network error: ' + (e.message || e), 'error');
+        setResult('Network error: ' + (e && e.message ? e.message : e), 'error');
       }
-    };
+    }
+
+    // Wire everything with addEventListener (more robust than onclick)
+    triggerBtn.addEventListener('click', openModal);
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+    document.querySelectorAll('#connection-settings-modal .modal-backdrop').forEach(b => {
+      b.addEventListener('click', closeModal);
+    });
+    saveBtn.addEventListener('click', handleSave);
+    testBtn.addEventListener('click', handleTest);
+    clearBtn.addEventListener('click', handleClear);
+
+    // Initialize the visible status pill at load
+    updateStatusPills();
   }
 
   document.addEventListener('DOMContentLoaded', init);

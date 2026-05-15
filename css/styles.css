@@ -1944,119 +1944,80 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus {
   padding: 6px 12px;
 }
 
-/* === CONNECTION SETTINGS (inline collapsible) === */
-.connection-settings-section {
+/* === CONNECTION SETTINGS (popup) === */
+.connection-trigger {
   max-width: 520px;
-  margin: 24px auto 0;
-  padding: 0;
-  border: 1px solid var(--line);
-  border-radius: var(--r-md);
-  background: var(--bg-elevated);
-  overflow: hidden;
-}
-.connection-settings-section[open] {
-  border-color: var(--line-strong);
-}
-.connection-settings-section > summary {
-  list-style: none;
-  cursor: pointer;
-  padding: 14px 20px;
+  margin: 20px auto 0;
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
+}
+.connection-trigger-btn {
+  display: inline-flex;
   align-items: center;
-  font-family: var(--font-body);
-  user-select: none;
-}
-.connection-settings-section > summary::-webkit-details-marker { display: none; }
-.connection-settings-section > summary::before {
-  content: '▸';
-  margin-right: 10px;
-  color: var(--ink-muted);
-  font-size: 0.8rem;
-  transition: transform var(--t-fast);
-  display: inline-block;
-}
-.connection-settings-section[open] > summary::before {
-  transform: rotate(90deg);
-}
-.conn-sec-title {
-  flex: 1;
-  font-weight: 600;
-  font-size: 0.92rem;
-  color: var(--ink);
-}
-.conn-sec-status {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  color: var(--ink-muted);
-  padding: 3px 9px;
-  background: var(--bg-sunken);
-  border-radius: 100px;
-  letter-spacing: 0.04em;
-}
-.conn-sec-status.enabled {
-  color: var(--green, #2d7a2d);
-  background: color-mix(in srgb, var(--green, #2d7a2d) 12%, transparent);
-}
-.conn-sec-body {
-  padding: 4px 20px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  border-top: 1px solid var(--line);
-}
-.conn-sec-intro {
-  margin: 12px 0 4px;
+  gap: 10px;
+  padding: 10px 16px !important;
+  font-size: 0.88rem !important;
   color: var(--ink-soft);
-  font-size: 0.85rem;
-  line-height: 1.5;
+  border: 1px solid var(--line);
+  background: var(--bg-elevated);
 }
-.conn-sec-row {
-  display: grid;
-  grid-template-columns: 96px 1fr;
-  gap: 12px;
-  align-items: center;
+.connection-trigger-btn:hover {
+  border-color: var(--ink-soft);
+  color: var(--ink);
 }
-.conn-sec-row label {
-  font-family: var(--font-mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.12em;
-  color: var(--ink-muted);
+.conn-trigger-icon {
+  font-size: 1rem;
+  opacity: 0.7;
+}
+.conn-trigger-label {
   font-weight: 600;
-  text-transform: uppercase;
 }
-.conn-sec-row input[type="text"] {
-  padding: 9px 13px;
+.conn-trigger-status {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 100px;
+  background: var(--bg-sunken);
+  color: var(--ink-muted);
+  letter-spacing: 0.05em;
+}
+.conn-trigger-status.on {
+  color: var(--green, #2d7a2d);
+  background: color-mix(in srgb, var(--green, #2d7a2d) 14%, transparent);
+}
+
+.connection-modal-content { width: min(480px, 92vw); }
+.connection-modal-content .modal-body input[type="text"] {
+  padding: 11px 14px;
   border: 1.5px solid var(--line);
-  border-radius: var(--r-sm, 6px);
+  border-radius: var(--r-md);
   background: var(--bg);
-  font-size: 0.92rem;
+  font-size: 0.95rem;
   font-family: var(--font-mono);
   color: var(--ink);
-  width: 100%;
 }
-.conn-sec-row input[type="text"]:focus {
+.connection-modal-content .modal-body input[type="text"]:focus {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
 }
-.conn-sec-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 4px;
-}
-.conn-sec-actions .btn {
-  flex: 0 0 auto;
-  padding: 9px 16px;
-  font-size: 0.88rem;
-}
-.conn-sec-result {
-  margin: 4px 0 0;
-  min-height: 1.2em;
+.conn-modal-status {
   font-family: var(--font-mono);
-  font-size: 0.82rem;
+  font-weight: 600;
   color: var(--ink-muted);
 }
-.conn-sec-result.success { color: var(--green, #2d7a2d); }
-.conn-sec-result.error { color: var(--accent, #c41e3a); }
+.conn-modal-status.on { color: var(--green, #2d7a2d); }
+.modal-helper {
+  margin: 4px 0 0;
+  font-size: 0.82rem;
+  color: var(--ink-muted);
+  line-height: 1.45;
+}
+#connection-test-result {
+  min-height: 1.2em;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+}
+#connection-test-result.success { color: var(--green, #2d7a2d); }
+#connection-test-result.error { color: var(--accent, #c41e3a); }
 
