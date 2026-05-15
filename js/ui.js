@@ -169,7 +169,11 @@ const UI = (() => {
 
     const myIdx = state.players.findIndex(p => p.id === viewerId);
     const n = state.players.length;
-    const positions = computeSeatPositions(n);
+    // Use a compact (side-hugging) seat arc whenever the board area is taller
+    // than usual — multi-runout stacks several boards vertically and the standard
+    // top-arc seats overlap with cards. 3+ boards is when it gets crowded.
+    const useCompactArc = (state.runitCount >= 3);
+    const positions = computeSeatPositions(n, { compactArc: useCompactArc });
 
     state.players.forEach((p, i) => {
       const slot = myIdx >= 0 ? (i - myIdx + n) % n : i;
@@ -247,10 +251,13 @@ const UI = (() => {
     }
   }
 
-  function computeSeatPositions(n) {
+  function computeSeatPositions(n, opts) {
     // Slot 0 = viewer, near bottom-center of felt.
     // Other slots spread across the top arc so they all fit on-screen
     // regardless of player count.
+    // When multi-runout is active (3+ boards stacked vertically in the center),
+    // we flatten the arc so seats hug the sides and leave the center clear.
+    const compact = opts && opts.compactArc;
     const positions = [];
 
     if (n === 1) {
@@ -261,19 +268,37 @@ const UI = (() => {
     // Viewer at bottom
     positions.push({ x: '50%', y: '82%' });
 
-    // Opponents on a top arc from ~150° to ~30° (the upper half of the ellipse).
-    // Distribute (n-1) opponents evenly along that arc.
     const opponents = n - 1;
-    // Arc endpoints in radians (measuring from positive x-axis, going counter-clockwise)
-    // We want positions on the TOP half, so angles from ~180° to ~0° via the top (~90° is straight up)
-    // In screen coords y goes down, so we negate sin.
-    const startAngle = Math.PI * 0.95;   // far left, slightly above midline
-    const endAngle   = Math.PI * 0.05;   // far right, slightly above midline
+    if (compact) {
+      // Compact mode for multi-runout: opponents hug the left and right sides,
+      // alternating, so they never cross the vertical center column where the
+      // multi-board stack lives. Each side gets up to 4 tiers from top down.
+      const perSide = Math.ceil(opponents / 2);
+      for (let i = 0; i < opponents; i++) {
+        const side = i % 2 === 0 ? 'left' : 'right';
+        const tier = Math.floor(i / 2);
+        const x = side === 'left' ? 6 : 94;
+        // Stack tiers in the upper half of the felt only (top → midline).
+        // perSide=1 → single tier at y=22%
+        // perSide=2 → tiers at y=18%, 50%
+        // perSide=3 → tiers at y=14%, 36%, 58%
+        // perSide=4 → tiers at y=12%, 30%, 48%, 66% (avoids viewer at 82%)
+        const startY = 22 - (perSide - 1) * 4;
+        const stepY  = perSide === 1 ? 0 : (perSide <= 2 ? 32 : 18);
+        const y = startY + tier * stepY;
+        positions.push({ x: x + '%', y: y + '%' });
+      }
+      return positions;
+    }
+
+    // Standard arc: opponents on top arc from ~170° to ~10°
+    const startAngle = Math.PI * 0.95;
+    const endAngle   = Math.PI * 0.05;
     for (let i = 0; i < opponents; i++) {
       const t = opponents === 1 ? 0.5 : i / (opponents - 1);
       const angle = startAngle + (endAngle - startAngle) * t;
       const x = 50 + 42 * Math.cos(angle);
-      const y = 45 - 36 * Math.sin(angle); // sin>0 → moves up (smaller y)
+      const y = 45 - 36 * Math.sin(angle);
       positions.push({ x: x + '%', y: y + '%' });
     }
     return positions;
@@ -319,7 +344,17 @@ const UI = (() => {
     if (!me) { showWaiting(panel, 'Spectating'); return; }
 
     // ===== Busted player — offer rebuy =====
-    if (me.sittingOut && (me.stack || 0) <= 0) {
+    // Show whenever player has no chips and isn't actively committed to a live hand.
+    // It's fine to show at showdown (their chips lost the hand) or when sitting out
+    // (next hand started without them).
+    const inLiveHand = state.street !== 'idle'
+                    && state.street !== 'showdown'
+                    && !state.pendingRunout
+                    && state.runitPhase !== 'voting'
+                    && state.runitPhase !== 'running'
+                    && !me.folded
+                    && me.totalBet > 0;
+    if ((me.stack || 0) <= 0 && !inLiveHand) {
       const wrap = el('div', { class: 'rebuy-action-wrap' });
       wrap.appendChild(el('div', { class: 'rebuy-message', text: "You're out of chips." }));
       const btn = el('button', { class: 'btn btn-primary', onclick: () => window.AppRebuy && window.AppRebuy.open() }, 'Buy back in');

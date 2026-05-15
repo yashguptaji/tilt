@@ -11,6 +11,37 @@
 
 const Network = (() => {
 
+  // WebRTC ICE server config:
+  //  - Google STUN servers handle the common case (direct peer-to-peer through NAT)
+  //  - OpenRelay TURN servers handle hard cases where direct P2P fails
+  //    (symmetric NAT, corporate firewalls, restrictive ISPs).
+  //    OpenRelay is a free public service. Traffic is encrypted (DTLS).
+  //    If it ever goes down, swap in another TURN provider or self-host coturn.
+  const ICE_SERVERS = [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    {
+      urls: 'turn:openrelay.metered.ca:80',
+      username: 'openrelayproject',
+      credential: 'openrelayproject'
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443',
+      username: 'openrelayproject',
+      credential: 'openrelayproject'
+    },
+    {
+      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+      username: 'openrelayproject',
+      credential: 'openrelayproject'
+    }
+  ];
+
+  const PEER_OPTS = {
+    debug: 1,
+    config: { iceServers: ICE_SERVERS }
+  };
+
   let peer = null;
   let isHost = false;
   let roomId = null;
@@ -34,9 +65,7 @@ const Network = (() => {
       roomId = genRoomId();
       myPlayerId = Util.uuid();
 
-      peer = new Peer(roomId, {
-        debug: 1,
-      });
+      peer = new Peer(roomId, PEER_OPTS);
 
       peer.on('open', id => {
         resolve(id);
@@ -67,7 +96,7 @@ const Network = (() => {
           // re-try with new ID
           peer.destroy();
           roomId = genRoomId();
-          peer = new Peer(roomId, { debug: 1 });
+          peer = new Peer(roomId, PEER_OPTS);
           peer.on('open', id => resolve(id));
           peer.on('connection', c => peer.emit('connection', c));
           return;
@@ -93,7 +122,7 @@ const Network = (() => {
       isHost = false;
       myPlayerId = Util.uuid();
 
-      peer = new Peer({ debug: 1 });
+      peer = new Peer(PEER_OPTS);
 
       peer.on('open', () => {
         hostConn = peer.connect(targetRoomId, { reliable: true });
@@ -101,7 +130,7 @@ const Network = (() => {
 
         const timeout = setTimeout(() => {
           if (!connected) reject(new Error('Connection timed out — is the host online?'));
-        }, 12000);
+        }, 20000);
 
         hostConn.on('open', () => {
           connected = true;
