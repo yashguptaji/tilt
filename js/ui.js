@@ -380,20 +380,13 @@ const UI = (() => {
     if (!me) { showWaiting(panel, 'Spectating'); return; }
 
     // ===== Busted player — offer rebuy =====
-    // Show the rebuy button only when the player has 0 chips AND the hand is
-    // not actively in progress. Specifically, hide it when:
-    //   - a betting street is live (preflop/flop/turn/river with action still possible)
-    //   - the player is all-in and the board is being run out (pendingRunout)
-    //   - run-it voting or running animation is happening
-    // At showdown or while idle, the hand is over — chips are no longer at risk
-    // and the rebuy button should appear if the player has nothing left.
-    const handInProgress = state.street === 'preflop' || state.street === 'flop'
-                        || state.street === 'turn'    || state.street === 'river';
-    const allInResolving = state.pendingRunout
-                        || state.runitPhase === 'voting'
-                        || state.runitPhase === 'running';
-    const inLiveHand = handInProgress || allInResolving;
-    if ((me.stack || 0) <= 0 && !inLiveHand) {
+    // Show the rebuy button when the player has 0 chips AND either:
+    //   - the table is idle (between hands / waiting), or
+    //   - the player is sitting out a hand in progress (others are playing)
+    // We hide it during the player's OWN live hand and during all-in resolution
+    // so the rebuy CTA doesn't interrupt the player's experience of their hand.
+    const playerIsSpectator = me.sittingOut && (me.totalBet || 0) === 0;
+    if ((me.stack || 0) <= 0 && (state.street === 'idle' || playerIsSpectator)) {
       const wrap = el('div', { class: 'rebuy-action-wrap' });
       wrap.appendChild(el('div', { class: 'rebuy-message', text: "You're out of chips." }));
       const btn = el('button', { class: 'btn btn-primary', onclick: () => window.AppRebuy && window.AppRebuy.open() }, 'Buy back in');

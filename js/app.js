@@ -925,6 +925,16 @@
             captureLastStacks();
             if (App.mode !== 'solo') broadcastState();
             renderGame();
+          } else {
+            // Not enough players with chips. Transition to idle so busted
+            // players see the rebuy button (and the table waits for someone
+            // to rebuy or join).
+            App.gameState.street = 'idle';
+            App.gameState.players.forEach(p => {
+              if ((p.stack || 0) <= 0) p.sittingOut = true;
+            });
+            if (App.mode !== 'solo') broadcastState();
+            renderGame();
           }
         }
       }, 4000);
@@ -1028,6 +1038,13 @@
           if (playable.length >= 2) {
             Holdem.startHand(App.gameState);
             captureLastStacks();
+            if (App.mode !== 'solo') broadcastState();
+            renderGame();
+          } else {
+            App.gameState.street = 'idle';
+            App.gameState.players.forEach(p => {
+              if ((p.stack || 0) <= 0) p.sittingOut = true;
+            });
             if (App.mode !== 'solo') broadcastState();
             renderGame();
           }
