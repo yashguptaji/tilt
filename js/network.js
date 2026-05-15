@@ -33,7 +33,7 @@ const Network = (() => {
   // the long key). Real keys are accepted as-is.
   const DEFAULT_METERED_APP = 'tiltpoker';
   const KEY_SHORTCUTS = {
-    'yg1': 'O1SUKuZbOFjT4sxWatSMrcbuMN5teclpJO2oC2ke2Yr1wpmF',
+    'yg1': 'b8663f211ccb78d7d5027d3ef8dc2bc266bc',
   };
 
   function resolveKey(input) {
@@ -214,6 +214,9 @@ const Network = (() => {
       onMessage({ type: 'chat', text: msg.text, playerId: meta.playerId });
       return;
     }
+    // Forward any other message type to the app handler with sender's playerId
+    // attached. This covers chat-send, rebuy-request, and any future types.
+    onMessage({ ...msg, playerId: meta.playerId, from: conn.peer });
   }
 
   function handleGuestMessage(msg) {

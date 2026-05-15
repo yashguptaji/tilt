@@ -943,10 +943,10 @@
   function runAllInAnimation() {
     if (!App.gameState || !App.gameState.pendingRunout) return;
 
-    const DELAY_BEFORE = 1400;     // initial pause to show hole cards + equities
-    const DELAY_BETWEEN = 1300;    // between flop -> turn or board -> next-board start
-    const DELAY_RIVER = 2200;      // extra suspenseful pause before river reveal
-    const DELAY_AFTER_RIVER = 900; // brief pause after river before moving on
+    const DELAY_BEFORE = 1800;     // initial pause to show hole cards + equities
+    const DELAY_BETWEEN = 1800;    // between flop -> turn or board -> next-board start
+    const DELAY_RIVER = 2800;      // extra suspenseful pause before river reveal
+    const DELAY_AFTER_RIVER = 1200; // brief pause after river before moving on
 
     const isMulti = () => App.gameState && App.gameState.runitCount > 1;
 

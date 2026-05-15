@@ -6,6 +6,23 @@ const UI = (() => {
 
   const { el, $, $$, fmt, fmtFull, initials } = Util;
 
+  // Track cards we've already shown on each board, so subsequent re-renders
+  // don't re-trigger the deal-in animation for already-visible cards.
+  // Keyed by handNumber + boardIdx + cardPosition.
+  const _shownCards = new Set();
+  function _resetShownCardsIfNewHand(handNumber) {
+    if (_shownCards.lastHand !== handNumber) {
+      _shownCards.clear();
+      _shownCards.lastHand = handNumber;
+    }
+  }
+  function _markCardShown(handNumber, boardIdx, cardIdx) {
+    const key = handNumber + ':' + boardIdx + ':' + cardIdx;
+    if (_shownCards.has(key)) return false; // already shown
+    _shownCards.add(key);
+    return true;
+  }
+
   function renderHeader(state) {
     const titles = { holdem: "Texas Hold'em", plo: 'Pot-Limit Omaha', blackjack: 'Blackjack' };
     $('#game-title').textContent = titles[state.type] || '—';
@@ -98,16 +115,35 @@ const UI = (() => {
       const evalFn = state.type === 'plo' ? HandEval.evalOmaha : HandEval.evalHoldem;
       const livePlayersForEval = state.players.filter(p => !p.folded && !p.sittingOut && p.hole && p.hole.length > 0 && !p.hole.includes('?'));
 
+      // Reset the shown-cards tracker if we're on a new hand
+      _resetShownCardsIfNewHand(state.handNumber);
+
       boards.forEach((b, bi) => {
         const row = el('div', { class: 'community-board-row' });
         if (isMultiRunout) {
           row.appendChild(el('div', { class: 'community-board-label', text: 'Run ' + (bi + 1) }));
         }
         const cardsRow = el('div', { class: 'community-cards' });
+        // Detect which positions are newly dealt in this render
+        const newlyDealtPositions = [];
+        b.forEach((c, ci) => {
+          if (_markCardShown(state.handNumber, bi, ci)) newlyDealtPositions.push(ci);
+        });
+        // The first newly-dealt index is when the stagger starts (so the FIRST
+        // new card lands with no delay, subsequent ones cascade)
+        const firstNewIdx = newlyDealtPositions[0];
         b.forEach((c, ci) => {
           const isRiverCard = ci === 4;
           const cardEl = Cards.render(c, { highlight: winSet.has(c) });
           if (isRiverCard) cardEl.classList.add('river-card');
+          if (newlyDealtPositions.includes(ci)) {
+            cardEl.classList.add('is-newly-dealt');
+            // Stagger: position within this batch × 850ms
+            const order = ci - firstNewIdx;
+            if (order > 0) cardEl.style.animationDelay = (order * 850) + 'ms';
+          } else {
+            cardEl.classList.add('already-shown');
+          }
           cardsRow.appendChild(cardEl);
         });
         const padTo = isMultiRunout ? 5 : singleExpected;
@@ -344,16 +380,19 @@ const UI = (() => {
     if (!me) { showWaiting(panel, 'Spectating'); return; }
 
     // ===== Busted player — offer rebuy =====
-    // Show whenever player has no chips and isn't actively committed to a live hand.
-    // It's fine to show at showdown (their chips lost the hand) or when sitting out
-    // (next hand started without them).
-    const inLiveHand = state.street !== 'idle'
-                    && state.street !== 'showdown'
-                    && !state.pendingRunout
-                    && state.runitPhase !== 'voting'
-                    && state.runitPhase !== 'running'
-                    && !me.folded
-                    && me.totalBet > 0;
+    // Show the rebuy button only when the player has 0 chips AND the hand is
+    // not actively in progress. Specifically, hide it when:
+    //   - a betting street is live (preflop/flop/turn/river with action still possible)
+    //   - the player is all-in and the board is being run out (pendingRunout)
+    //   - run-it voting or running animation is happening
+    // At showdown or while idle, the hand is over — chips are no longer at risk
+    // and the rebuy button should appear if the player has nothing left.
+    const handInProgress = state.street === 'preflop' || state.street === 'flop'
+                        || state.street === 'turn'    || state.street === 'river';
+    const allInResolving = state.pendingRunout
+                        || state.runitPhase === 'voting'
+                        || state.runitPhase === 'running';
+    const inLiveHand = handInProgress || allInResolving;
     if ((me.stack || 0) <= 0 && !inLiveHand) {
       const wrap = el('div', { class: 'rebuy-action-wrap' });
       wrap.appendChild(el('div', { class: 'rebuy-message', text: "You're out of chips." }));
