@@ -1221,6 +1221,7 @@
     initTheme();
     initLanding();
     initShortcuts();
+    initConnectionSettings();
     $('#btn-solo').style.display = App.config.gameType === 'blackjack' ? '' : 'none';
     const roomId = parseRoomFromHash();
     if (roomId) {
@@ -1230,6 +1231,68 @@
       const lastName = Util.Store.get('lastName');
       if (lastName) $('#guest-name').value = lastName;
     }
+  }
+
+  function initConnectionSettings() {
+    const modal = $('#connection-settings-modal');
+    const open = () => {
+      $('#metered-app').value = Util.Store.get('meteredApp') || '';
+      $('#metered-key').value = Util.Store.get('meteredKey') || '';
+      $('#connection-test-result').textContent = '';
+      $('#connection-test-result').className = 'modal-helper';
+      modal.classList.add('open');
+    };
+    const close = () => modal.classList.remove('open');
+
+    $('#btn-open-connection-settings').onclick = open;
+    $('#btn-close-connection-settings').onclick = close;
+    document.querySelectorAll('#connection-settings-modal .modal-backdrop').forEach(b => b.onclick = close);
+
+    $('#btn-save-connection-settings').onclick = () => {
+      const app = $('#metered-app').value.trim();
+      const key = $('#metered-key').value.trim();
+      if (app) Util.Store.set('meteredApp', app); else Util.Store.remove('meteredApp');
+      if (key) Util.Store.set('meteredKey', key); else Util.Store.remove('meteredKey');
+      const msg = key && app ? 'Saved — relay enabled' : 'Saved — relay disabled (STUN only)';
+      const result = $('#connection-test-result');
+      result.textContent = msg;
+      result.className = 'modal-helper success';
+      Util.toast(msg, 'success');
+    };
+
+    $('#btn-test-connection').onclick = async () => {
+      const app = $('#metered-app').value.trim();
+      const key = $('#metered-key').value.trim();
+      const result = $('#connection-test-result');
+      result.textContent = '';
+      result.className = 'modal-helper';
+      if (!app || !key) {
+        result.textContent = 'Enter both subdomain and key to test.';
+        result.className = 'modal-helper error';
+        return;
+      }
+      result.textContent = 'Testing…';
+      try {
+        const url = `https://${app}.metered.live/api/v1/turn/credentials?apiKey=${encodeURIComponent(key)}`;
+        const res = await fetch(url);
+        if (!res.ok) {
+          result.textContent = `Failed: ${res.status} ${res.statusText}. Check subdomain and key.`;
+          result.className = 'modal-helper error';
+          return;
+        }
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          result.textContent = `OK — ${data.length} relay servers available. Click Save.`;
+          result.className = 'modal-helper success';
+        } else {
+          result.textContent = 'Got a response, but no servers returned.';
+          result.className = 'modal-helper error';
+        }
+      } catch (e) {
+        result.textContent = 'Network error: ' + (e.message || e);
+        result.className = 'modal-helper error';
+      }
+    };
   }
 
   document.addEventListener('DOMContentLoaded', init);

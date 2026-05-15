@@ -1943,3 +1943,53 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus {
   font-size: 0.82rem;
   padding: 6px 12px;
 }
+
+/* === CONNECTION SETTINGS === */
+.connection-settings-link {
+  background: none;
+  border: none;
+  color: var(--ink-muted);
+  text-decoration: underline;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  margin-left: 12px;
+  letter-spacing: 0.04em;
+}
+.connection-settings-link:hover { color: var(--accent); }
+
+.connection-settings-content { width: min(520px, 92vw); }
+.connection-settings-content .modal-body input[type="text"] {
+  padding: 11px 14px;
+  border: 1.5px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--bg);
+  font-size: 0.95rem;
+  font-family: var(--font-mono);
+}
+.connection-settings-content .modal-body input[type="text"]:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.modal-helper {
+  margin: 4px 0 0;
+  font-size: 0.82rem;
+  color: var(--ink-muted);
+  line-height: 1.45;
+}
+.modal-helper code {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  padding: 1px 5px;
+  background: var(--bg-sunken);
+  border-radius: 4px;
+}
+#connection-test-result {
+  min-height: 1.2em;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+}
+#connection-test-result.success { color: var(--green, #2d7a2d); }
+#connection-test-result.error { color: var(--accent, #c41e3a); }

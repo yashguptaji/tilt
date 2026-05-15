@@ -79,6 +79,7 @@
 
     <footer class="landing-footer">
       <span>Peer-to-peer · No server · Your data stays in your browser</span>
+      <button id="btn-open-connection-settings" class="connection-settings-link">Connection settings</button>
     </footer>
   </div>
 </section>
@@ -339,6 +340,41 @@
         <button class="btn btn-ghost danger" id="btn-rebuy-reject">Reject</button>
         <button class="btn btn-primary" id="btn-rebuy-approve">Approve</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<div id="connection-settings-modal" class="modal">
+  <div class="modal-backdrop"></div>
+  <div class="modal-content connection-settings-content">
+    <div class="modal-header">
+      <h2>Connection settings</h2>
+      <button class="icon-btn" id="btn-close-connection-settings">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-intro">
+        Tilt uses peer-to-peer connections. They usually work direct between browsers, but
+        sometimes need a relay (TURN server) when one or both players are behind restrictive
+        networks — corporate Wi-Fi, mobile data, certain ISPs.
+      </p>
+      <p class="modal-intro">
+        If players can't connect across the internet, set up a free Metered account
+        (20 GB/month) and paste the credentials below. They're saved locally in this
+        browser only. <a href="https://dashboard.metered.ca/" target="_blank" rel="noopener">Sign up →</a>
+      </p>
+      <label class="modal-label" for="metered-app">Metered subdomain</label>
+      <input id="metered-app" type="text" placeholder="e.g. mytilt" autocomplete="off" />
+      <label class="modal-label" for="metered-key">Metered API key</label>
+      <input id="metered-key" type="text" placeholder="leave blank to disable" autocomplete="off" />
+      <p class="modal-helper">
+        Find both in your Metered dashboard under "TURN Server → API key".
+        Your subdomain looks like <code>mytilt</code> in <code>mytilt.metered.live</code>.
+      </p>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="btn-test-connection">Test</button>
+        <button class="btn btn-primary" id="btn-save-connection-settings">Save</button>
+      </div>
+      <p class="modal-helper" id="connection-test-result"></p>
     </div>
   </div>
 </div>

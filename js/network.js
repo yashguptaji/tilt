@@ -11,36 +11,55 @@
 
 const Network = (() => {
 
-  // WebRTC ICE server config:
-  //  - Google STUN servers handle the common case (direct peer-to-peer through NAT)
-  //  - OpenRelay TURN servers handle hard cases where direct P2P fails
-  //    (symmetric NAT, corporate firewalls, restrictive ISPs).
-  //    OpenRelay is a free public service. Traffic is encrypted (DTLS).
-  //    If it ever goes down, swap in another TURN provider or self-host coturn.
-  const ICE_SERVERS = [
+  // WebRTC ICE server config.
+  //
+  // Baseline: Google STUN. Sufficient for most home-to-home connections.
+  // When STUN-only fails (symmetric NAT, mobile data, corporate firewall),
+  // a TURN relay is required. There are no working free TURN providers with
+  // static credentials anymore — they all require signup + API key fetch now.
+  //
+  // To enable TURN relay, the user (or host) can save a Metered API key in
+  // Settings → Connection. The key is stored in localStorage and used to
+  // fetch fresh credentials at connection time. 20GB/month free at metered.ca.
+  const STUN_SERVERS = [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
-    {
-      urls: 'turn:openrelay.metered.ca:80',
-      username: 'openrelayproject',
-      credential: 'openrelayproject'
-    },
-    {
-      urls: 'turn:openrelay.metered.ca:443',
-      username: 'openrelayproject',
-      credential: 'openrelayproject'
-    },
-    {
-      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-      username: 'openrelayproject',
-      credential: 'openrelayproject'
-    }
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun.cloudflare.com:3478' },
   ];
 
-  const PEER_OPTS = {
-    debug: 1,
-    config: { iceServers: ICE_SERVERS }
-  };
+  /**
+   * Build the ICE server list, fetching TURN credentials if a Metered API key
+   * is configured. Returns a Promise resolving to the iceServers array.
+   */
+  async function buildIceServers() {
+    const ice = STUN_SERVERS.slice();
+    try {
+      const apiKey = (Util.Store && Util.Store.get && Util.Store.get('meteredKey')) || null;
+      const appName = (Util.Store && Util.Store.get && Util.Store.get('meteredApp')) || null;
+      if (apiKey && appName) {
+        const url = `https://${appName}.metered.live/api/v1/turn/credentials?apiKey=${encodeURIComponent(apiKey)}`;
+        const res = await fetch(url, { method: 'GET' });
+        if (res.ok) {
+          const turns = await res.json();
+          if (Array.isArray(turns)) ice.push(...turns);
+        } else {
+          console.warn('TURN credential fetch failed:', res.status);
+        }
+      }
+    } catch (e) {
+      console.warn('TURN credential fetch error:', e);
+    }
+    return ice;
+  }
+
+  async function buildPeerOpts(extra) {
+    return {
+      debug: 1,
+      config: { iceServers: await buildIceServers() },
+      ...(extra || {})
+    };
+  }
 
   let peer = null;
   let isHost = false;
@@ -60,12 +79,13 @@ const Network = (() => {
    * Start hosting. Returns promise resolving to roomId.
    */
   function host() {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
       isHost = true;
       roomId = genRoomId();
       myPlayerId = Util.uuid();
 
-      peer = new Peer(roomId, PEER_OPTS);
+      const opts = await buildPeerOpts();
+      peer = new Peer(roomId, opts);
 
       peer.on('open', id => {
         resolve(id);
@@ -90,13 +110,14 @@ const Network = (() => {
         });
       });
 
-      peer.on('error', err => {
+      peer.on('error', async err => {
         console.error('peer error', err);
         if (err.type === 'unavailable-id') {
           // re-try with new ID
           peer.destroy();
           roomId = genRoomId();
-          peer = new Peer(roomId, PEER_OPTS);
+          const retryOpts = await buildPeerOpts();
+          peer = new Peer(roomId, retryOpts);
           peer.on('open', id => resolve(id));
           peer.on('connection', c => peer.emit('connection', c));
           return;
@@ -118,11 +139,12 @@ const Network = (() => {
    * Join a host by their room ID.
    */
   function join(targetRoomId, joinPayload) {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
       isHost = false;
       myPlayerId = Util.uuid();
 
-      peer = new Peer(PEER_OPTS);
+      const opts = await buildPeerOpts();
+      peer = new Peer(opts);
 
       peer.on('open', () => {
         hostConn = peer.connect(targetRoomId, { reliable: true });
